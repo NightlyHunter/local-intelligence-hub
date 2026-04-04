@@ -1,0 +1,14 @@
+# Secrets
+.env
+
+# Service config directories (contain API keys, auth tokens, DB files)
+configs/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
