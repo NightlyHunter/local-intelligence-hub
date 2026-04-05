@@ -39,7 +39,7 @@ services:
       - WEBUI_PORT=8080
     volumes:
       - ~/docker/configs/qbittorrent:/config
-      - /Volumes/T7/media/downloads:/downloads
+      - /Volumes/T7/media:/media
     restart: unless-stopped
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest

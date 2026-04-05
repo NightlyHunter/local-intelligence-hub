@@ -42,20 +42,25 @@ A five-phase personal infrastructure project that turns a Mac Studio into a loca
 | [ADR-006](docs/decisions/ADR-006.md) | Why tiered automation rollout |
 | [ADR-007](docs/decisions/ADR-007.md) | Why Jellyseerr for non-English title discovery |
 | [ADR-008](docs/decisions/ADR-008.md) | Why gluetun VPN kill switch for torrent traffic |
+| [ADR-009](docs/decisions/ADR-009.md) | Why Watchtower for automated container updates |
 
 ## Repo Structure
+
+```
+local-intelligence-hub/
 ├── README.md
-├── docker-compose.yml        # All containerized services
-├── .env.example              # Template for secrets
+├── docker-compose.yml           # All containerized services
+├── .env.example                 # Template for secrets
 ├── docs/
-│   ├── phase-1-ai/           # Ollama, OpenClaw, Telegram bot setup
-│   ├── phase-2-media/        # Arr stack, Jellyfin, storage strategy
-│   ├── phase-3-vault/        # Paperless-ngx, Actual Budget
-│   ├── phase-4-automation/   # n8n workflows
-│   ├── phase-5-sharing/      # Tailscale remote access
-│   └── decisions/            # Architecture Decision Records
-├── scripts/                  # Backup & maintenance scripts
-└── diagrams/                 # Architecture & data flow visuals
+│   ├── phase-1-ai/              # Ollama, OpenClaw, Telegram bot setup
+│   ├── phase-2-media/           # Arr stack, Jellyfin, storage strategy
+│   ├── phase-3-vault/           # Paperless-ngx, Actual Budget
+│   ├── phase-4-automation/      # n8n workflows
+│   ├── phase-5-sharing/         # Tailscale remote access
+│   └── decisions/               # Architecture Decision Records
+├── scripts/                     # Backup & maintenance scripts
+└── diagrams/                    # Architecture & data flow visuals
+```
 ## Hardware
 
 - **Mac Studio** — Apple M-series, 128GB Unified Memory, 2TB Internal SSD
