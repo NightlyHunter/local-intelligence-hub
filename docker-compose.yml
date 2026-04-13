@@ -122,3 +122,97 @@ services:
       - WATCHTOWER_INCLUDE_STOPPED=false
       - WATCHTOWER_NO_RESTART=false
     restart: unless-stopped
+
+  # ============================================================
+  # Phase 3: Life Admin & Budgeting
+  # ============================================================
+
+  redis:
+    image: docker.io/library/redis:7
+    container_name: redis
+    restart: unless-stopped
+    volumes:
+      - ~/docker/configs/redis:/data
+
+  paperless:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: paperless
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - gotenberg
+      - tika
+    ports:
+      - 8000:8000
+    volumes:
+      - ~/docker/configs/paperless/data:/usr/src/paperless/data
+      - ~/docker/configs/paperless/media:/usr/src/paperless/media
+      - ~/docker/configs/paperless/export:/usr/src/paperless/export
+      - ~/docker/configs/paperless/consume:/usr/src/paperless/consume
+    environment:
+      PAPERLESS_REDIS: redis://redis:6379
+      PAPERLESS_TIME_ZONE: America/Chicago
+      PAPERLESS_OCR_LANGUAGE: eng+rus+ukr
+      PAPERLESS_OCR_LANGUAGES: rus ukr
+      PAPERLESS_FILENAME_FORMAT: "{{ created_year }}/{{ correspondent }}/{{ title }}"
+      PAPERLESS_CONSUMER_POLLING: 30
+      PAPERLESS_CONSUMER_RECURSIVE: "true"
+      PAPERLESS_TRASH_DIR: /usr/src/paperless/media/trash
+      PAPERLESS_TIKA_ENABLED: 1
+      PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://gotenberg:3000
+      PAPERLESS_TIKA_ENDPOINT: http://tika:9998
+      USERMAP_UID: 1000
+      USERMAP_GID: 1000
+
+  gotenberg:
+    image: docker.io/gotenberg/gotenberg:8
+    container_name: gotenberg
+    restart: unless-stopped
+    command:
+      - "gotenberg"
+      - "--chromium-disable-javascript=true"
+      - "--chromium-allow-list=file:///tmp/.*"
+
+  tika:
+    image: docker.io/apache/tika:latest
+    container_name: tika
+    restart: unless-stopped
+
+  actual-budget:
+    image: actualbudget/actual-server:latest
+    container_name: actual-budget
+    restart: unless-stopped
+    ports:
+      - 5006:5006
+    volumes:
+      - ~/docker/configs/actual-budget:/data
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    ports:
+      - 8888:8080
+    volumes:
+      - ~/docker/configs/searxng:/etc/searxng
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8888/
+      - SEARXNG_SECRET=${SEARXNG_SECRET}
+    restart: unless-stopped
+
+  vane:
+    image: itzcrazykns1337/vane:slim-latest
+    container_name: vane
+    ports:
+      - 3001:3000
+    environment:
+      - SEARXNG_API_URL=http://searxng:8080
+    volumes:
+      - vane-data:/home/vane/data
+    depends_on:
+      - searxng
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+    restart: unless-stopped
+
+volumes:
+  vane-data:
