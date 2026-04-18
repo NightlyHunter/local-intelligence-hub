@@ -2,7 +2,6 @@
 
 > **Hardware:** Mac Studio, 128GB Unified Memory, 2TB Internal SSD
 > **Completed:** March 30 – April 5, 2026
-> **Revised:** April 12, 2026 — Ollama lifecycle migrated from `brew services` + `launchctl setenv` to a user LaunchAgent. See ADR-010 and ADR-012.
 
 ---
 
@@ -40,235 +39,228 @@ Phase 1 establishes the AI inference foundation: Ollama running natively on macO
 ### Base System
 
 1. **macOS setup wizard** — standard configuration, created admin account.
-2. **FileVault** — enabled during setup. Critical note for headless operation: use `sudo fdesetup authrestart` for planned reboots. Without this, the Mac sits at the FileVault login screen after reboot, unreachable via SSH or Tailscale until someone types the password on a physical keyboard.
+2. **FileVault** — enabled during setup. Critical note for headless operation: use `fdesetup authrestart` for planned reboots. Without this, the Mac sits at the FileVault login screen after reboot, unreachable via SSH or remote access until someone types the password on a physical keyboard.
 3. **Hostname** — set via System Settings → General → Sharing → Local Hostname.
 4. **Energy settings** — disabled sleep, enabled "Start up automatically after a power failure."
-5. **Automatic macOS updates** — disabled per ADR-011. Updates are applied manually during maintenance windows using `fdesetup authrestart`.
 
 ### Core Tools
 
 All installed via [Homebrew](https://brew.sh/):
 
 ```bash
+# Package manager
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
+# Terminal
 brew install --cask warp
-brew install --cask orbstack        # see ADR-003
-brew install --cask tailscale       # see ADR-004
+
+# Container runtime (see ADR-003)
+brew install --cask orbstack
+
+# System monitoring (menu bar)
 brew install --cask stats
-brew install ollama                 # binary only — lifecycle managed by user LaunchAgent, see ADR-010
+
+# AI inference (see ADR-001)
+brew install ollama
 ```
 
 ---
 
 ## 2. Ollama Configuration
 
-Ollama runs **natively on macOS** — not containerized — to access full unified memory and Metal GPU acceleration. See [ADR-001](../decisions/ADR-001-ollama-native-not-containerized.md).
+Ollama runs **natively on macOS** — not containerized — to access full unified memory and Metal GPU acceleration. See [ADR-001](../decisions/ADR-001-ollama-native-not-containerized.md) for the full rationale.
 
-Homebrew installs the `ollama` binary but does not manage its lifecycle in this setup. Lifecycle is owned by a user LaunchAgent at `~/Library/LaunchAgents/com.fitz.ollama.plist`. This approach is documented in [ADR-010](../decisions/ADR-010-ollama-launchagent.md).
+### Environment Variables
 
-> ⚠️ **DO NOT USE** `launchctl setenv OLLAMA_HOST ...` — this was the approach in the original setup and it failed after a reboot on April 11 (see [ADR-012](../decisions/ADR-012-april-11-reboot-incident-retrospective.md)). `launchctl setenv` values are session-scoped and cleared on reboot, leaving Ollama bound to localhost. The LaunchAgent approach below is the canonical method.
-
-### Environment Variables (Baked Into the LaunchAgent)
-
-All Ollama configuration lives in the plist's `EnvironmentVariables` block — no external state, no `launchctl setenv`.
-
-| Variable | Value | Purpose |
-|---|---|---|
-| `OLLAMA_HOST` | `0.0.0.0` | Listen on all interfaces (required for LAN access from MacBook, OpenClaw) |
-| `OLLAMA_NUM_PARALLEL` | `2` | Two simultaneous inference requests; further requests queue |
-| `OLLAMA_KEEP_ALIVE` | `24h` | Keep model loaded for 24h to avoid reload latency between sessions |
-| `OLLAMA_FLASH_ATTENTION` | `1` | Apple Silicon attention kernel acceleration (Homebrew default) |
-| `OLLAMA_KV_CACHE_TYPE` | `q8_0` | Quantize KV cache to halve its memory footprint with minimal quality loss |
-
-### Deploying the LaunchAgent
+Ollama runs as a macOS background service (LaunchAgent). It does **not** read shell profile exports (`~/.zshrc`, `~/.bash_profile`). Environment variables must be set via `launchctl setenv`:
 
 ```bash
-# Make sure Homebrew isn't also trying to manage Ollama
-brew services stop ollama 2>/dev/null
+# Listen on all interfaces (required for LAN access)
+launchctl setenv OLLAMA_HOST 0.0.0.0
 
-# Write the plist
-cat > ~/Library/LaunchAgents/com.fitz.ollama.plist <<'PLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key><string>com.fitz.ollama</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/opt/homebrew/opt/ollama/bin/ollama</string>
-        <string>serve</string>
-    </array>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>OLLAMA_HOST</key><string>0.0.0.0</string>
-        <key>OLLAMA_NUM_PARALLEL</key><string>2</string>
-        <key>OLLAMA_KEEP_ALIVE</key><string>24h</string>
-        <key>OLLAMA_FLASH_ATTENTION</key><string>1</string>
-        <key>OLLAMA_KV_CACHE_TYPE</key><string>q8_0</string>
-        <key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-    </dict>
-    <key>RunAtLoad</key><true/>
-    <key>KeepAlive</key><true/>
-    <key>LimitLoadToSessionType</key>
-    <array>
-        <string>Aqua</string><string>Background</string>
-        <string>LoginWindow</string><string>StandardIO</string><string>System</string>
-    </array>
-    <key>WorkingDirectory</key><string>/opt/homebrew/var</string>
-    <key>StandardOutPath</key><string>/opt/homebrew/var/log/ollama.log</string>
-    <key>StandardErrorPath</key><string>/opt/homebrew/var/log/ollama.log</string>
-</dict>
-</plist>
-PLIST
+# Allow two simultaneous requests; extras queue (max 512)
+launchctl setenv OLLAMA_NUM_PARALLEL 2
 
-# Validate and load
-plutil -lint ~/Library/LaunchAgents/com.fitz.ollama.plist
-launchctl load ~/Library/LaunchAgents/com.fitz.ollama.plist
+# Keep model loaded for 24 hours (avoids reload between sessions)
+launchctl setenv OLLAMA_KEEP_ALIVE 24h
+
+# Restart to pick up changes
+brew services restart ollama
 ```
 
-### Verification (Three Independent Signals)
+### Verify Binding
 
 ```bash
-# 1. launchd has it loaded with exit code 0
-launchctl list | grep com.fitz.ollama
-
-# 2. Bound to * (all interfaces), not localhost
+# Should show Ollama listening on *:11434 (all interfaces)
 lsof -i :11434
-# Expected: ollama  <pid> fitz   3u  IPv6 ...  TCP *:11434 (LISTEN)
-
-# 3. API responding with models
-curl -s http://localhost:11434/api/tags | head -c 200
 ```
 
-If step 2 shows `localhost:11434` instead of `*:11434`, the plist's env vars aren't being applied — check `plutil -lint` and `launchctl list` output.
-
-### Maintenance
-
-- **After `brew upgrade ollama`:** the binary is replaced but the running process still runs the old version. Refresh with:
-  ```bash
-  launchctl kickstart -k gui/$(id -u)/com.fitz.ollama
-  ```
-- **Full restart** (rare): `launchctl unload && launchctl load` with the plist path.
-- **Rollback to Homebrew management** (not recommended): `launchctl unload ~/Library/LaunchAgents/com.fitz.ollama.plist && brew services start ollama`.
+If it shows `localhost:11434` or `127.0.0.1:11434`, the `OLLAMA_HOST` variable didn't take — re-run `launchctl setenv` and restart.
 
 ### Model Management
 
 ```bash
+# Pull a model
 ollama pull qwen3.5:122b-a10b
+
+# List downloaded models
 ollama list
-ollama ps                         # what's currently loaded in memory
-ollama stop qwen3.5:122b-a10b     # unload (frees memory)
-ollama run qwen3.5:9b "hello"     # quick test
+
+# Check what's currently loaded in memory
+ollama ps
+
+# Unload current model (frees memory)
+ollama stop qwen3.5:122b-a10b
+
+# Quick test
+ollama run qwen3.5:9b "Hello, what model are you?"
 ```
 
-**Only one model is loaded in memory at a time.** Requesting a different model triggers an unload/load cycle. With `OLLAMA_KEEP_ALIVE=24h`, the active model stays loaded across sessions.
+**Only one model is loaded in memory at a time.** Requesting a different model triggers an unload/load cycle. With `OLLAMA_KEEP_ALIVE=24h`, the active model stays loaded between sessions.
 
 ### Model Roster
 
-| Model | Role | Disk | Active | Notes |
+| Model | Role | Disk Size | Active Params | Notes |
 |---|---|---|---|---|
 | Qwen 3.5 122B-A10B | Primary (heavy tasks) | ~70GB | 10B (MoE) | Best quality; 262K context |
-| Qwen 3.5 9B | Fast (Telegram) | ~6GB | 9B | Sub-60s for Telegram webhook |
-| Qwen 2.5 72B | Fallback | ~41GB | 72B | If 3.5 has Ollama issues |
-| Llama 4 Scout | Evaluation | ~67GB | TBD | Queued |
-| Nemotron-Cascade-2 | Evaluation (coding) | ~18GB | 3B (MoE) | Queued |
+| Qwen 3.5 9B | Fast (Telegram, routine) | ~6GB | 9B (dense) | Sub-60s for Telegram webhook |
+| Qwen 2.5 72B | Fallback | ~41GB | 72B (dense) | Insurance if 3.5 has issues |
+| Llama 4 Scout | Evaluation | ~67GB | TBD | Queued for comparison |
+| Nemotron-Cascade-2 | Evaluation (coding) | ~18GB | 3B (MoE) | Queued for coding tasks |
 
-See [ADR-002](../decisions/ADR-002-qwen-35-122b-primary-model.md). Ruled out: Llama 4 Maverick (~245GB), DeepSeek V3.2/V4, DeepSeek R1.
+See [ADR-002](../decisions/ADR-002-qwen-35-122b-primary-model.md) for model selection rationale.
+
+**Ruled out:** Llama 4 Maverick (~245GB, exceeds 128GB RAM), DeepSeek V3.2/V4 (too large), DeepSeek R1 (outdated).
 
 ---
 
 ## 3. Open WebUI
 
+Open WebUI provides a browser-based ChatGPT-style interface for interacting with Ollama models.
+
+### Deployment
+
+Running as an OrbStack container, port 3000:
+
 ```bash
 docker run -d \
   --name open-webui \
-  --restart unless-stopped \
+  --restart always \
   -p 3000:8080 \
   -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
   -v open-webui-data:/app/backend/data \
   ghcr.io/open-webui/open-webui:main
 ```
 
-**Key detail:** `OLLAMA_BASE_URL` uses `host.docker.internal` to reach the native Ollama process from inside the container.
+**Key detail:** `OLLAMA_BASE_URL` uses `host.docker.internal` to reach the native Ollama process from inside the container. This is OrbStack's DNS name for the host machine.
 
-Access: `http://localhost:3000` locally, `http://<studio-ip>:3000` from LAN, `http://<tailscale-ip>:3000` remote.
+### Access
+
+- **Local (Mac Studio):** `http://localhost:3000`
+- **LAN (MacBook):** `http://<mac-studio-ip>:3000`
+- **Remote:** Same LAN URL, connected via UniFi Teleport (see ADR-004)
+
+First visit requires creating an admin account. Model switching is available in the UI — select 9B for quick tasks, 122B for heavy work.
 
 ---
 
 ## 4. OpenClaw & Telegram Bot
 
-OpenClaw runs on a **separate Linux PC**. It connects to the Mac Studio's Ollama instance via LAN IP.
+OpenClaw runs on a **separate Linux PC**, not on the Mac Studio. It acts as an AI agent framework that connects to Ollama for inference and exposes a Telegram bot interface.
 
-- Endpoint: `http://<mac-studio-ip>:11434/v1/` (OpenAI-compatible, **not** Ollama's `/api/`)
-- Telegram bot token via BotFather, configured in OpenClaw.
-- Telegram's ~60s webhook timeout requires the bot to use the 9B model — 122B first-token latency exceeds the window.
+### Setup
 
-End-to-end flow:
+1. OpenClaw installed on the Linux PC following its documentation.
+2. Configured to point at the Mac Studio's Ollama instance via LAN IP:
+   - Endpoint: `http://<mac-studio-ip>:11434/v1/` (OpenAI-compatible endpoint)
+   - **Gotcha:** OpenClaw expects the `/v1/` API format (OpenAI-compatible), not Ollama's native `/api/` endpoint.
+3. Telegram bot token generated via [BotFather](https://t.me/BotFather).
+4. Bot token configured in OpenClaw.
+
+### End-to-End Flow
+
 ```
-User (Telegram) → webhook → OpenClaw (Linux PC)
+User message (Telegram) → Telegram webhook → OpenClaw (Linux PC)
     → Ollama /v1/chat/completions (Mac Studio) → response
     → OpenClaw → Telegram → User
 ```
 
+### Telegram-Specific Constraint
+
+Telegram enforces a **~60 second webhook timeout**. Large models (122B) can exceed this on first-token latency, especially when cold-loading. The Telegram bot is configured to use the **9B model** exclusively. The 122B model is reserved for Open WebUI and CLI use where there's no timeout pressure.
+
 ---
 
-## 5. Tailscale
+## 5. Remote Access
 
-```bash
-tailscale up
-tailscale ip -4   # 100.x.x.x, stable across reboots
-```
+Remote access to the hub is handled outside this phase and does not require any additional software on the Mac Studio.
 
-All services then reachable via the `100.x.x.x` IP from any Tailscale-connected device. See [ADR-004](../decisions/ADR-004-tailscale-over-port-forwarding.md).
+### Current: UniFi Teleport (Operator Access)
+
+The UDM provides **UniFi Teleport / Site Magic**, a relay-based remote access service built into UniFi OS. The operator connects from a MacBook or phone via the WiFiman or UniFi mobile app. Once connected, the device has LAN-equivalent access — all hub services are reachable at their LAN IPs:
+
+- Ollama API: `http://<mac-studio-ip>:11434`
+- Open WebUI: `http://<mac-studio-ip>:3000`
+- Phase 2 services on their respective ports
+
+Teleport solves the T-Mobile CGNAT problem (no public IP, no port forwarding possible) by using UniFi's relay infrastructure. The UDM establishes an outbound connection to UniFi's coordination backend; operator devices connect through that relay. No router configuration or public IP needed.
+
+### Planned: Cloudflare Tunnel (Phase 5, Public Jellyfin)
+
+For Phase 5, Cloudflare Tunnel will expose Jellyfin to friends/family via a public URL. `cloudflared` runs as a container on the Mac Studio, creates an outbound tunnel to Cloudflare's edge, and serves a single hostname (e.g., `jellyfin.<domain>`). Guests visit a URL — no VPN client install, no account creation. Not implemented yet.
+
+### Evaluated and Deferred: Tailscale, Local DNS
+
+Tailscale (mesh VPN) and local DNS were evaluated as additional infrastructure. Both are deferred pending a concrete triggering need — Tailscale if a device moves off the LAN or if granular per-device ACLs become necessary; local DNS if service discovery by name becomes preferable to LAN IPs. See [ADR-004](../decisions/ADR-004-remote-access.md) for the full decision and revisit conditions.
 
 ---
 
 ## Troubleshooting
 
-### Ollama only listening on localhost after reboot
-
-Symptom: `lsof -i :11434` shows `localhost:11434` instead of `*:11434`; LAN clients can't reach Ollama.
-
-**This is the April 11 failure mode.** If you see this on a machine that was supposed to be running the LaunchAgent:
-1. Confirm the plist exists: `ls -la ~/Library/LaunchAgents/com.fitz.ollama.plist`
-2. Confirm it's loaded: `launchctl list | grep com.fitz.ollama`
-3. If loaded but still localhost-only, inspect env: the plist's `EnvironmentVariables` block must contain `OLLAMA_HOST` with value `0.0.0.0`. Run `plutil -p ~/Library/LaunchAgents/com.fitz.ollama.plist` to dump it.
-4. `launchctl unload && launchctl load` to reapply.
-
-### Ollama not running at all
+### Ollama not accessible from LAN
 
 ```bash
-launchctl list | grep com.fitz.ollama
-# If absent: launchctl load ~/Library/LaunchAgents/com.fitz.ollama.plist
-# If present with non-zero exit code: check /opt/homebrew/var/log/ollama.log
+# Check binding
+lsof -i :11434
+# Should show *:11434, not localhost:11434
+
+# If wrong, re-set and restart
+launchctl setenv OLLAMA_HOST 0.0.0.0
+brew services restart ollama
 ```
 
 ### Model load fails / out of memory
 
 ```bash
+# Check what's loaded
 ollama ps
-ollama stop <current-model>
+
+# Unload current model first
+ollama stop <model-name>
+
+# Then pull/run the new one
 ollama run <new-model>
 ```
 
 ### Open WebUI can't reach Ollama
 
-Verify `OLLAMA_BASE_URL=http://host.docker.internal:11434` in the container's env — **not** `localhost`.
+Verify `OLLAMA_BASE_URL` is set to `http://host.docker.internal:11434` (not `localhost`, which resolves inside the container's own network namespace).
 
 ### FileVault blocks headless reboot
 
 ```bash
+# Use authrestart for planned reboots
 sudo fdesetup authrestart
 ```
-Always use this for operator-initiated reboots. ADR-011 eliminates unattended reboots as a category.
+
+This caches the decryption key for one reboot cycle, allowing the Mac to boot past FileVault without physical keyboard input.
 
 ---
 
 ## Lessons Learned
 
-1. **`launchctl setenv` is session-scoped and unsuitable for production Ollama config.** The original Phase 1 setup used it; it survived 12 days of uptime and failed on the first reboot. Replaced with a user LaunchAgent (ADR-010).
+1. **`launchctl setenv` is the only way** to pass environment variables to Ollama on macOS. Shell exports don't work — the background service doesn't source shell profiles.
 2. **Native Ollama is non-negotiable on Apple Silicon.** Containerized = no Metal, no full memory access, 5-10x slower.
-3. **Model splitting by use case is essential.** One model can't serve both a 60-second webhook timeout and complex reasoning tasks.
-4. **OpenClaw expects OpenAI API format** (`/v1/`), not Ollama's native `/api/`.
-5. **FileVault + headless is solvable with `fdesetup authrestart`** — but requires operator-initiated reboots, which is now the policy (ADR-011).
+3. **Model splitting by use case** is essential. One model can't serve both a 60-second webhook timeout and complex reasoning tasks. Fast model for latency-sensitive interfaces, large model for quality-sensitive work.
+4. **OpenClaw expects OpenAI API format** (`/v1/`), not Ollama's native `/api/` — easy to miss during initial setup.
+5. **FileVault + headless is solvable** with `fdesetup authrestart`, but you have to remember to use it every time.

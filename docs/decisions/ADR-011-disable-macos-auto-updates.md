@@ -27,7 +27,7 @@ Disable macOS automatic update installation. Updates will continue to be **check
 
 ## Trade-offs
 
-- **Delayed security patches.** Critical CVEs in macOS are now on operator-applied cadence, not Apple's. Mitigated by: the Mac Studio is LAN-only (no public ingress; Tailscale handles all remote access — see ADR-004), and critical updates will be applied during regular engagement with the lab (typically weekly).
+- **Delayed security patches.** Critical CVEs in macOS are now on operator-applied cadence, not Apple's. Mitigated by: the Mac Studio is LAN-only (no public ingress; remote access via UniFi Teleport is relay-based with no open ports — see ADR-004), and critical updates will be applied during regular engagement with the lab (typically weekly).
 - **Operator forgets to apply updates.** Realistic failure mode. Mitigated by: macOS still *notifies* about available updates via the default check-and-download behavior, and the operator engages with the lab frequently enough that a pending update badge will be noticed.
 - **No protection against zero-days between available-update and operator-applied.** Accepted. The threat model for a LAN-only home server with no public attack surface does not justify unattended reboots.
 
