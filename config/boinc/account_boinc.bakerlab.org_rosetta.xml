@@ -1,0 +1,26 @@
+<account>
+    <master_url>https://boinc.bakerlab.org/rosetta/</master_url>
+    <authenticator>e967260412af783013b0135fbb30c1dd</authenticator>
+    <project_name>Rosetta@home</project_name>
+<project_preferences>
+</project_preferences>
+<gui_urls>
+
+    <gui_url>
+        <name>Message boards</name>
+        <description>Correspond with other users on the Rosetta@home message boards</description>
+        <url>https://boinc.bakerlab.org/rosetta/forum_index.php</url>
+    </gui_url>
+    <gui_url>
+        <name>Your account</name>
+        <description>View your account information</description>
+        <url>https://boinc.bakerlab.org/rosetta/home.php</url>
+    </gui_url>
+    <gui_url>
+        <name>Your tasks</name>
+        <description>View the last week or so of computational work</description>
+        <url>https://boinc.bakerlab.org/rosetta/results.php?userid=2443973</url>
+    </gui_url>
+    
+</gui_urls>
+</account>

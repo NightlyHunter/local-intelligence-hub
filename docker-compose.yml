@@ -216,5 +216,42 @@ services:
       - "com.centurylinklabs.watchtower.enable=false"
     restart: unless-stopped
 
+
+  snowflake-proxy:
+    image: thetorproject/snowflake-proxy:latest
+    container_name: snowflake-proxy
+    network_mode: host
+    restart: unless-stopped
+
+  boinc:
+    image: lscr.io/linuxserver/boinc:latest
+    container_name: boinc
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+    volumes:
+      - ./config/boinc:/config
+    ports:
+      - 8818:8080
+    cpus: 2
+    restart: unless-stopped
+
+  foldingathome:
+    image: lscr.io/linuxserver/foldingathome:latest
+    container_name: foldingathome
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+      - ACCOUNT_TOKEN=${FAH_ACCOUNT_TOKEN}
+      - MACHINE_NAME=mac-studio
+    volumes:
+      - ./config/foldingathome:/config
+    ports:
+      - 7396:7396
+    cpus: 2
+    restart: unless-stopped
+
 volumes:
   vane-data:

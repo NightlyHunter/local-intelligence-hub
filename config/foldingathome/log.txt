@@ -1,0 +1,72 @@
+*********************** Log Started 2026-04-19T09:24:36Z ***********************
+09:24:36:I1:*********************** Folding@home Client ***********************
+09:24:36:I1:    Version: 8.5.5
+09:24:36:I1:     Author: Joseph Coffland <joseph@cauldrondevelopment.com>
+09:24:36:I1:        Org: foldingathome.org
+09:24:36:I1:  Copyright: 2023-2025, foldingathome.org
+09:24:36:I1:   Homepage: https://foldingathome.org/
+09:24:36:I1:    License: GPL-3.0-or-later
+09:24:36:I1:        URL: https://v8-5.foldingathome.org/
+09:24:36:I1:       Date: Dec 2 2025
+09:24:36:I1:       Time: 15:21:29
+09:24:36:I1:   Revision: 2c6fbaa45e4ee4854195a9f0d4b86300975b6543
+09:24:36:I1:     Branch: master
+09:24:36:I1:   Compiler: GNU 12.5.0
+09:24:36:I1:    Options: -Wsuggest-override -faligned-new -std=c++17 -fsigned-char -O3 -fPIC
+09:24:36:I1:             -fstack-protector-strong
+09:24:36:I1:   Platform: linux 5.10.0-36-arm64
+09:24:36:I1:       Bits: 64
+09:24:36:I1:       Mode: Release
+09:24:36:I1:       Args: --http-addresses 0.0.0.0:7396 --allow 0/0 --account-token
+09:24:36:I1:             zj-qyzj-IM3UWIM3OUYl3OUYu_VAyu_U__fS4__ey_c --machine-name
+09:24:36:I1:             mac-studio
+09:24:36:I1:****************************** CBang ******************************
+09:24:36:I1:    Version: 1.7.2
+09:24:36:I1:     Author: Joseph Coffland <joseph@cauldrondevelopment.com>
+09:24:36:I1:        Org: Cauldron Development
+09:24:36:I1:  Copyright: Cauldron Development, 2003-2025
+09:24:36:I1:   Homepage: https://cauldrondevelopment.com/
+09:24:36:I1:    License: LGPL-2.1-or-later
+09:24:36:I1:       Date: Dec 3 2025
+09:24:36:I1:       Time: 11:44:00
+09:24:36:I1:   Revision: 83a4be55c1b21d5383650f51a7887fd9c25b836c
+09:24:36:I1:     Branch: master
+09:24:36:I1:   Compiler: GNU 12.5.0
+09:24:36:I1:    Options: -Wsuggest-override -faligned-new -std=c++17 -fsigned-char -O3 -fPIC
+09:24:36:I1:             -fstack-protector-strong
+09:24:36:I1:   Platform: linux 5.10.0-36-arm64
+09:24:36:I1:       Bits: 64
+09:24:36:I1:       Mode: Release
+09:24:36:I1:***************************** System ******************************
+09:24:36:I1:        CPU: Apple
+09:24:36:I1:     CPU ID: Apple Family 8 Model 0 Stepping 0
+09:24:36:I1:       CPUs: 16
+09:24:36:I1:     Memory: 15.65GiB
+09:24:36:I1:Free Memory: 5.44GiB
+09:24:36:I1: OS Version: 6.17
+09:24:36:I1:Has Battery: false
+09:24:36:I1: On Battery: false
+09:24:36:I1:   Hostname: c571e83d5ebc
+09:24:36:I1: UTC Offset: -5
+09:24:36:I1:        PID: 179
+09:24:36:I1:        CWD: /config
+09:24:36:I1:       Exec: /app/fah-client
+09:24:36:I1:*******************************************************************
+09:24:36:I2:<config/>
+09:24:36:I1:Opening Database
+09:24:36:I1:Generating RSA key....................................................................++++-..................................................................................................++++-
+09:24:36:I1:F@H ID = -HGLknc_fSnWRvzbG9W89ICFDxjLpMAVR9nDBvt8Z9o
+09:24:36:I3:Loading default resource group
+09:24:36:I2:Listening for HTTP on 0.0.0.0:7396
+09:24:36:I3:Loaded 0 wus.
+09:24:36:I2:No previous gpus.json
+09:24:36:I2:OUT1:> PUT /machine/-HGLknc_fSnWRvzbG9W89ICFDxjLpMAVR9nDBvt8Z9o HTTP/1.1
+09:24:36:I2:OUT2:> GET /gpus HTTP/1.1
+09:24:37:I2:OUT1:< HTTP/1.1 200 HTTP_OK
+09:24:37:I1:Account linked
+09:24:37:I2:OUT4:> GET /machine/-HGLknc_fSnWRvzbG9W89ICFDxjLpMAVR9nDBvt8Z9o HTTP/1.1
+09:24:38:I2:OUT4:< HTTP/1.1 200 HTTP_OK
+09:24:38:I2:OUT5:> GET /ws/client HTTP/1.1
+09:24:38:I2:OUT5:< HTTP/1.1 101 HTTP_SWITCHING_PROTOCOLS
+09:24:38:I1:Logging into node account
+09:24:39:I2:OUT2:< HTTP/1.1 200 HTTP_OK
