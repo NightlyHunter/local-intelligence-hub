@@ -26,6 +26,7 @@ services:
       - "6881:6881" # qBittorrent torrents
       - "6881:6881/udp"
     restart: unless-stopped
+
   qbittorrent:
     image: linuxserver/qbittorrent:latest
     container_name: qbittorrent
@@ -102,7 +103,8 @@ services:
       - 8096:8096
     restart: unless-stopped
   jellyseerr:
-    image: fallenbagel/jellyseerr:latest
+    image: ghcr.io/seerr-team/seerr:latest
+    init: true
     container_name: jellyseerr
     environment:
       - TZ=America/Chicago

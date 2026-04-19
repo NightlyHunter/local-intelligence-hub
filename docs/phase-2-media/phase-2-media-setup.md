@@ -2,13 +2,13 @@
 
 > **Hardware:** Mac Studio, 1TB External SSD (`/Volumes/T7`)
 > **Started:** April 4, 2026
-> **Stack:** gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr, Lidarr, Jellyfin, Jellyseerr, Watchtower
+> **Stack:** gluetun, qBittorrent, FlareSolverr, Prowlarr, Radarr, Sonarr, Lidarr, Jellyfin, Seerr, Watchtower
 
 ---
 
 ## Overview
 
-Phase 2 deploys a complete media acquisition and streaming pipeline. Users search for content via Jellyseerr, which dispatches requests to Radarr/Sonarr. These query Prowlarr for indexer results, send downloads to qBittorrent (routed through a VPN), and Jellyfin serves the final library for playback.
+Phase 2 deploys a complete media acquisition and streaming pipeline. Users search for content via Seerr, which dispatches requests to Radarr/Sonarr. These query Prowlarr for indexer results, send downloads to qBittorrent (routed through a VPN), and Jellyfin serves the final library for playback.
 
 All containers run in OrbStack via a single Docker Compose file.
 
@@ -16,7 +16,7 @@ All containers run in OrbStack via a single Docker Compose file.
 
 ```
 ┌──────────┐     ┌────────────┐     ┌──────────┐     ┌───────────┐
-│Jellyseerr│────►│Radarr/Sonarr│────►│ Prowlarr  │────►│ Indexers   │
+│Seerr│────►│Radarr/Sonarr│────►│ Prowlarr  │────►│ Indexers   │
 │  :5055   │     │ /Lidarr    │     │  :9696   │     │(1337x,etc)│
 └──────────┘     └─────┬──────┘     └──────────┘     └───────────┘
                        │
@@ -62,7 +62,7 @@ All media lives on a 1TB external SSD mounted at `/Volumes/T7`. Config data live
 ├── lidarr/
 ├── prowlarr/
 ├── jellyfin/
-├── jellyseerr/
+├── seerr/
 ├── qbittorrent/
 └── gluetun/
 ```
@@ -142,7 +142,7 @@ radarr:
     - ~/docker/configs/radarr:/config
 
 # Same pattern for sonarr (:8989), lidarr (:8686), prowlarr (:9696),
-# jellyfin (:8096), jellyseerr (:5055)
+# jellyfin (:8096), seerr (:5055)
 ```
 
 All non-VPN containers use Docker's default bridge network and can reach each other by service name (e.g., `http://radarr:7878`).
@@ -290,9 +290,9 @@ Pending configuration. The Mac Studio's media engine supports VideoToolbox for h
 
 ---
 
-## 8. Jellyseerr
+## 8. Seerr
 
-Jellyseerr is the user-facing request layer. See [ADR-007](../decisions/ADR-007-jellyseerr-request-layer.md) for why it exists.
+Seerr is the user-facing request layer. See [ADR-007](../decisions/ADR-007-seerr-request-layer.md) for why it exists.
 
 ### Setup
 
@@ -304,9 +304,9 @@ Jellyseerr is the user-facing request layer. See [ADR-007](../decisions/ADR-007-
 
 ```
 Family member searches "Начало" (Russian)
-    → Jellyseerr queries TMDb → finds "Inception" (canonical English)
+    → Seerr queries TMDb → finds "Inception" (canonical English)
     → User clicks "Request"
-    → Jellyseerr sends to Radarr (English title + TMDb ID)
+    → Seerr sends to Radarr (English title + TMDb ID)
     → Radarr searches via Prowlarr → qBittorrent downloads
     → Jellyfin library updated → ready to watch
 ```
@@ -384,7 +384,7 @@ Categories:
 | Sonarr | 8989 | `http://localhost:8989` | TV management |
 | Lidarr | 8686 | `http://localhost:8686` | Music management |
 | Jellyfin | 8096 | `http://localhost:8096` | Media server |
-| Jellyseerr | 5055 | `http://localhost:5055` | Request interface |
+| Seerr | 5055 | `http://localhost:5055` | Request interface |
 | Watchtower | — | N/A | Auto-updater |
 
 ---
@@ -426,7 +426,7 @@ If inodes differ: verify both qBittorrent and the arr app mount the same volume 
 - For 1337x: ensure "Prefer Magnet Links" is enabled.
 - Test the indexer directly in Prowlarr (Indexers → test icon).
 
-### Jellyseerr can't find content by non-English title
+### Seerr can't find content by non-English title
 
 This works via TMDb. If a title isn't found, TMDb may not have the localized entry. Try searching by the English title as a workaround, or add the TMDb entry yourself.
 
