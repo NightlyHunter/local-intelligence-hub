@@ -1,3 +1,0 @@
-NVIDIA: libcuda.so: cannot open shared object file: No such file or directory
-ATI: libaticalrt.so: cannot open shared object file: No such file or directory
-clGetPlatformIDs() failed to return any OpenCL platforms
